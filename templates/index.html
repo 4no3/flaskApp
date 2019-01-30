@@ -1,16 +1,25 @@
-{% extends "theme.html" %}
-{% block title %}Hello World{% endblock %}
-{% block head %}
-    {{ super() }}
-    <style type="text/css">
-        body {
-            background-color: #87e29aee;
-        }
-    </style>
-{% endblock %}
-{% block content %}
-    <h1>{{title}}</h1>
-    <p>
-        {{message}}
-    </p>
-{% endblock %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>index</title>
+    </head>
+    <body>
+        <table>
+            <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+            </tr>
+            {% for user in users %}
+            <tr>
+                <td>{{user.username}}</td>
+                <td>{{user.description}}</td>
+                <td>
+                    <img src="{{user.user_image_url}}" width="120"/>
+                </td>
+            {% endfor %}
+            </tr>
+            </table>
+    </body>
+</html>

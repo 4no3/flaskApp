@@ -1,80 +1,58 @@
 from flask import Flask
 from flask import request
 from flask import render_template
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
-from random import random
+from datetime import datetime
+
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://localhost/testdb"
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), index=True, unique=True)
+    description = db.Column(db.String(120), index=True, unique=True)
+    user_image_url = db.Column(db.String(120), index=True, unique=True)
+    date_published = db.Column(db.DateTime, default=datetime.utcnow)
+    def __repr__(self):
+        return '<User &r>' % self.username
+
 
 @app.route("/")
-def hello_world():
-    return render_template("index.html", title="Hoge", message="Fuga")
-    # return render_template("index.html", lst=[
-    #     {"name": "Hoge", "value": "1"},
-    #     {"name": "Fuga", "value": "2"}, 
-    #     {"name": "Foo", "value": "3"}
-    #     ])
-    # return render_template("index.html", random=random())
-    # return render_template("index.html", title="Hello World")
-    # return render_template("index.html", obj={"title" : "hoge"})
-    # return """
-    #     <!DOCTYPE html>
-    #     <html>
-    #         <head>
-    #             <meta charset="utf-8"/>
-    #             <link rel="stylesheet" href="/static/style.css"/>
-    #         </head>
-    #         <body>
-    #             <h1>Hello World</h1>
-    #         </body>
-    #     </html>
-    # """
+def index():
+    users = User.query.all()
+    return render_template("index.html", users=users)
 
 
-@app.route("/foo/")
-def foo():
-    return "foo"
+@app.route("/form")
+def form():
+    return render_template("form.html")
 
 
-@app.route("/fuga")
-def fuga():
-    return "fuga"
+@app.route("/register", methods=["POST"])
+def register():
+    if request.form["username"] and request.form["description"] and request.files["image"]:
+        f = request.files["image"]
+        filepath = "static/" + secure_filename(f.filename)
+        f.save(filepath)
 
+        filepath = "/" + filepath
 
-@app.route("/title/<title>")
-def title(title):
-    return render_template("index.html", title=title)
+        newUser = User(username=request.form["username"], description=request.form["description"], user_image_url=filepath)
+        db.session.add(newUser)
+        db.session.commit()
 
-
-@app.route("/search")
-def search():
-    q = request.args.get("q", "")
-    return q
-
-
-@app.route("/login", methods=["GET"])
-def render_form():
-    return render_template("login.html")
-
-
-@app.route("/login", methods=["POST"])
-def login():
-    if request.form["username"] and request.form["email"]:
-        return render_template("check.html", email=request.form["email"], username=request.form["username"])
+        return render_template("result.html", username=request.form["username"], description=request.form["description"])
     else:
         return render_template("error.html")
 
 
-@app.route("/upload", methods=["GET"])
-def render_upload_form():
-    return render_template("upload.html")
-
-
-@app.route("/upload", methods=["POST"])
-def upload_file():
-    if request.form["name"] and request.files["image"]:
-        f = request.files["image"]
-        filepath = "static/" + secure_filename(f.filename)
-        f.save(filepath)
-        return render_template("result.html", name=request.form["name"], image_url=filepath)
-
+@app.cli.command("initdb")
+def initdb_command():
+    db.create_all()
